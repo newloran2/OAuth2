@@ -55,6 +55,10 @@ open class OAuth2ClientConfig {
 
 	/// The access token's expiry date.
 	open var accessTokenExpiry: Date?
+    
+    /// if true the expires_in will be divided by 1000
+    /// this is neccessary because Date(timeIntervalSinceNow receive a time in seconds and not in milliseconds
+    open var expirityIsInMilliseconds:Bool = false
 	
 	/// If set to true (the default), uses a keychain-supplied access token even if no "expires_in" parameter was supplied.
 	open var accessTokenAssumeUnexpired = true
@@ -185,13 +189,17 @@ open class OAuth2ClientConfig {
 		}
 		accessTokenExpiry = nil
 		if let expires = json["expires_in"] as? TimeInterval {
-			accessTokenExpiry = Date(timeIntervalSinceNow: expires)
+            accessTokenExpiry = Date(timeIntervalSinceNow: (expires / (expirityIsInMilliseconds ? 1000 : 1)))
 		}
 		else if let expires = json["expires_in"] as? Int {
-			accessTokenExpiry = Date(timeIntervalSinceNow: Double(expires))
+			accessTokenExpiry = Date(timeIntervalSinceNow: (Double(expires) / (expirityIsInMilliseconds ? 1000 : 1)))
 		}
 		else if let expires = json["expires_in"] as? String {			// when parsing implicit grant from URL fragment
-			accessTokenExpiry = Date(timeIntervalSinceNow: Double(expires) ?? 0.0)
+            if let exp = Double(expires){
+                accessTokenExpiry = Date(timeIntervalSinceNow: exp / (expirityIsInMilliseconds ?  1000 : 1))
+            } else {
+                accessTokenExpiry = Date(timeIntervalSinceNow: 0.0)
+            }
 		}
 		if let refresh = json["refresh_token"] as? String {
 			refreshToken = refresh
